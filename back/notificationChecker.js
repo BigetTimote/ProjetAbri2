@@ -11,7 +11,6 @@ const db = mysql.createPool({
     connectionLimit: 10
 });
 
-// Configurer web-push
 webpush.setVapidDetails(
     'mailto:admin@abri.local',
     process.env.PUBLIC_VAPID_KEY,
@@ -19,15 +18,17 @@ webpush.setVapidDetails(
 );
 
 module.exports = (wss) => {
-    console.log("--- JOB NOTIFICATION PUSH: OK ---");
+    console.log("--- JOB NOTIFICATION MINUTE : ACTIF ---");
     
+    // S'exécute toutes les minutes
     cron.schedule('* * * * *', () => {
+        // On cherche les sessions où date_fin est NULL (session en cours)
         const sql = `
             SELECT ups.user_id, ups.subscription_data, 
-            TIMESTAMPDIFF(MINUTE, ups.created_at, NOW()) as mins
-            FROM user_push_subscriptions ups 
-            WHERE ups.notification_sent = 0 
-            AND TIMESTAMPDIFF(MINUTE, ups.created_at, NOW()) >= 120
+            TIMESTAMPDIFF(MINUTE, cs.date_debut, NOW()) as mins_ecoulees
+            FROM Consommation_Session cs
+            JOIN user_push_subscriptions ups ON cs.id_utilisateur = ups.user_id
+            WHERE cs.date_fin IS NULL
         `;
         
         db.query(sql, (err, results) => {
@@ -41,21 +42,20 @@ module.exports = (wss) => {
                     try {
                         const subscription = JSON.parse(row.subscription_data);
                         const payload = JSON.stringify({
-                            title: "⏰ Votre session a dépassé 2 heures",
-                            body: `Durée de session: ${row.mins} minutes`,
+                            title: "Session en cours ⏱️",
+                            body: `Vous êtes connecté depuis ${row.mins_ecoulees} minute(s).`,
                             icon: "/logo192.png",
                             badge: "/logo-badge.png",
-                            tag: "session-notification",
-                            requireInteraction: true
+                            // Le "tag" permet de remplacer la notif précédente au lieu d'en créer une nouvelle
+                            tag: "session-status", 
+                            // "renotify: false" permet de mettre à jour le texte sans faire vibrer le tel à chaque fois
+                            renotify: false,
+                            silent: true 
                         });
                         
                         webpush.sendNotification(subscription, payload)
                             .then(() => {
-                                console.log(`📬 Notification envoyée à user ${row.user_id}`);
-                                db.query(
-                                    'UPDATE user_push_subscriptions SET notification_sent=1, notification_sent_at=NOW() WHERE user_id=?',
-                                    [row.user_id]
-                                );
+                                console.log(`📬 Update envoyée à user ${row.user_id} (${row.mins_ecoulees} min)`);
                             })
                             .catch(err => {
                                 console.error(`Erreur push user ${row.user_id}:`, err.message);
@@ -64,7 +64,7 @@ module.exports = (wss) => {
                                 }
                             });
                     } catch (parseErr) {
-                        console.error(`Erreur parsing subscription user ${row.user_id}:`, parseErr.message);
+                        console.error(`Erreur parsing subscription user ${row.user_id}`);
                     }
                 });
             }

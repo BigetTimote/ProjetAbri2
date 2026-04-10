@@ -1,3 +1,10 @@
+self.addEventListener('install', (event) => {
+    self.skipWaiting(); // Force la mise à jour immédiate
+});
+
+self.addEventListener('activate', (event) => {
+    event.waitUntil(clients.claim()); // Prend le contrôle des pages ouvertes
+});
 self.addEventListener('push', function(event) {
     if (event.data) {
         const data = event.data.json();
