@@ -1,0 +1,85 @@
+/* Thème Abri à Vélo */
+:root {
+    --abri-green: #2ecc71; /* Vert écologique */
+    --abri-dark: #2c3e50;  /* Gris bitume/structure */
+    --abri-bg: #f4f7f6;
+}
+
+body {
+    background-color: var(--abri-bg);
+    font-family: 'Inter', sans-serif;
+    color: var(--abri-dark);
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* Style de la carte de solde utilisateur */
+.card-solde {
+    background: linear-gradient(135deg, var(--abri-green), #27ae60);
+    color: white;
+    border-radius: 15px;
+    box-shadow: 0 4px 15px rgba(46, 204, 113, 0.3);
+}
+
+/* Icône de connexion */
+.icon-circle {
+    width: 80px;
+    height: 80px;
+    background-color: #e8f5e9;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+}
+
+/* Boutons personnalisés */
+.btn-success {
+    background-color: var(--abri-green);
+    border: none;
+}
+
+.btn-success:hover {
+    background-color: #27ae60;
+}
+
+/* Style des tableaux Admin */
+.table thead th {
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+    border: none;
+}
+
+.table tbody td {
+    font-size: 0.9rem;
+    border-bottom: 1px solid #eee;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .container {
+        padding: 15px;
+    }
+    
+    h2 {
+        font-size: 1.5rem;
+    }
+
+    .display-4 {
+        font-size: 2.5rem;
+    }
+}
+
+/* Animation douce lors de l'affichage */
+#user-dashboard, #admin-dashboard, #login-form {
+    animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}

@@ -1,0 +1,146 @@
+#include <SPI.h>
+#include <Ethernet.h>
+
+// Configuration réseau
+byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
+IPAddress ip(172, 29, 18, 201); // Doit correspondre à ARDUINO_CONFIG.host
+EthernetServer server(8080);    // Doit correspondre à ARDUINO_CONFIG.port
+
+void setup() {
+    Serial.begin(9600);
+    while (!Serial);
+
+    Serial.println("[ARDUINO] Démarrage...");
+
+    Ethernet.begin(mac, ip);
+
+    if (Ethernet.hardwareStatus() == EthernetNoHardware) {
+        Serial.println("[ERREUR] Shield Ethernet non détecté !");
+        while (true);
+    }
+
+    if (Ethernet.linkStatus() == LinkOFF) {
+        Serial.println("[AVERTISSEMENT] Câble Ethernet non connecté.");
+    }
+
+    server.begin();
+    Serial.print("[ARDUINO] Serveur démarré sur ");
+    Serial.print(Ethernet.localIP());
+    Serial.print(":");
+    Serial.println(8080);
+    Serial.println("[ARDUINO] En attente de messages...");
+}
+
+void loop() {
+    EthernetClient client = server.available();
+
+    if (client) {
+        Serial.println("--------------------------------------------------");
+        Serial.println("[ARDUINO] Nouvelle connexion reçue");
+
+        String requestLine = "";
+        String body = "";
+        bool isBody = false;
+        int contentLength = 0;
+
+        // Lecture des headers et du body
+        while (client.connected()) {
+            if (client.available()) {
+                char c = client.read();
+
+                if (!isBody) {
+                    requestLine += c;
+
+                    // Extraction du Content-Length
+                    if (requestLine.endsWith("Content-Length: ")) {
+                        String lenStr = "";
+                        while (client.available()) {
+                            char lc = client.read();
+                            if (lc == '\r') break;
+                            lenStr += lc;
+                        }
+                        contentLength = lenStr.toInt();
+                    }
+
+                    // Détection de la fin des headers (ligne vide)
+                    if (requestLine.endsWith("\r\n\r\n")) {
+                        isBody = true;
+                        requestLine = "";
+                    }
+                } else {
+                    body += c;
+                    if ((int)body.length() >= contentLength && contentLength > 0) {
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Affichage du body JSON reçu
+        Serial.println("[ARDUINO] Message reçu :");
+        Serial.println(body);
+
+        // Parsing manuel des champs JSON courants
+        Serial.println("[ARDUINO] Champs détectés :");
+        printJsonField(body, "access");
+        printJsonField(body, "badge");
+        printJsonField(body, "user");
+        printJsonField(body, "credit");
+        printJsonField(body, "timestamp");
+        printJsonField(body, "type");
+
+        // Réponse HTTP 200 OK
+        client.println("HTTP/1.1 200 OK");
+        client.println("Content-Type: application/json");
+        client.println("Connection: close");
+        client.println();
+        client.println("{\"status\":\"ok\",\"message\":\"Recu\"}");
+
+        delay(10);
+        client.stop();
+
+        Serial.println("[ARDUINO] Connexion fermée");
+        Serial.println("--------------------------------------------------");
+    }
+}
+
+// Extrait et affiche la valeur d'un champ JSON par son nom
+void printJsonField(String json, String key) {
+    String search = "\"" + key + "\"";
+    int keyIndex = json.indexOf(search);
+
+    if (keyIndex == -1) return;
+
+    int colonIndex = json.indexOf(":", keyIndex);
+    if (colonIndex == -1) return;
+
+    // Passe les espaces après ':'
+    int valueStart = colonIndex + 1;
+    while (valueStart < (int)json.length() && json[valueStart] == ' ') {
+        valueStart++;
+    }
+
+    String value = "";
+
+    if (json[valueStart] == '"') {
+        // Valeur string
+        valueStart++;
+        int valueEnd = json.indexOf("\"", valueStart);
+        value = json.substring(valueStart, valueEnd);
+    } else {
+        // Valeur numérique ou booléenne
+        int valueEnd = valueStart;
+        while (valueEnd < (int)json.length() &&
+               json[valueEnd] != ',' &&
+               json[valueEnd] != '}') {
+            valueEnd++;
+        }
+        value = json.substring(valueStart, valueEnd);
+        value.trim();
+    }
+
+    Serial.print("  ");
+    Serial.print(key);
+    Serial.print(" = ");
+    Serial.println(value);
+}
