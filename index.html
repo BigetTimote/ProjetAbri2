@@ -7,6 +7,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body class="bg-light">
 
@@ -32,6 +33,16 @@
                 <div class="card-solde p-4 mb-4 text-center">
                     <p class="text-uppercase tracking-wider small fw-bold mb-1">Capital Temps Restant</p>
                     <div class="display-4 fw-bold" id="user-time">--:--</div>
+                </div>
+                <div class="card p-3 mb-4">
+                    <h5 class="fw-bold mb-3">📊 Ma Dernière Consommation</h5>
+                    <div style="position: relative; height: 300px;">
+                        <canvas id="consoPieChart"></canvas>
+                    </div>
+                    <div class="mt-3 text-center small text-muted">
+                        <p><strong>Début:</strong> <span id="dateDebut">-</span></p>
+                        <p><strong>Fin:</strong> <span id="dateFin">-</span></p>
+                    </div>
                 </div>
                 <button class="btn btn-outline-danger btn-logout w-100">Déconnexion</button>
             </div>
@@ -88,5 +99,95 @@
 
     <script src="js/auth.js"></script>
     <script src="/back/push-notifications.js"></script>
+    <script>
+        let myChart = null;
+
+        async function loadUserConsos() {
+            try {
+                const userId = localStorage.getItem('userId');
+                console.log("🔍 userId récupéré:", userId);
+                
+                if (!userId) {
+                    console.log("❌ Pas d'userId trouvé");
+                    return;
+                }
+
+                const response = await fetch('https://site1.tspro.fr/api/affconsos');
+                console.log("📡 Réponse API:", response.status);
+                
+                if (!response.ok) {
+                    console.log("❌ API erreur:", response.status);
+                    return;
+                }
+
+                const apiData = await response.json();
+                console.log("📊 Données reçues:", apiData);
+                
+                const userSession = apiData.data.find(session => session.id == userId);
+                console.log("👤 Session trouvée:", userSession);
+                
+                if (!userSession) {
+                    console.log("❌ Aucune session pour cet utilisateur");
+                    return;
+                }
+
+                document.getElementById('dateDebut').textContent = new Date(userSession.date_debut).toLocaleString('fr-FR');
+                document.getElementById('dateFin').textContent = userSession.date_fin ? new Date(userSession.date_fin).toLocaleString('fr-FR') : '-';
+
+                const ctx = document.getElementById('consoPieChart');
+                if (!ctx) {
+                    console.log("❌ Canvas consoPieChart non trouvé");
+                    return;
+                }
+
+                console.log("✅ Canvas trouvé, création du graphique");
+                const ctxData = ctx.getContext('2d');
+                
+                if (myChart) {
+                    myChart.destroy();
+                }
+
+                myChart = new Chart(ctxData, {
+                    type: 'pie',
+                    data: {
+                        labels: ['Solaire', 'EDF'],
+                        datasets: [{
+                            data: [
+                                userSession.temps_solaire,
+                                userSession.temps_edf
+                            ],
+                            backgroundColor: ['#f1c40f', '#2980b9'],
+                            borderColor: ['#e8b50f', '#1e5f9d'],
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom'
+                            }
+                        }
+                    }
+                });
+                console.log("✅ Graphique créé avec succès!");
+
+            } catch (error) {
+                console.error("❌ Erreur chargement graphique:", error);
+            }
+        }
+
+        // Charger le graphique au chargement de la page si l'utilisateur est connecté
+        window.addEventListener('load', () => {
+            console.log("📄 Page chargée");
+            if (localStorage.getItem('userId')) {
+                setTimeout(loadUserConsos, 500);
+            }
+        });
+        
+        // Rafraîchir toutes les 30 secondes
+        setInterval(loadUserConsos, 30000);
+    </script>
 </body>
 </html>

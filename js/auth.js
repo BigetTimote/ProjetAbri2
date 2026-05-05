@@ -59,6 +59,11 @@ async function login() {
         const data = await res.json();
         if (res.ok && data.token) {
             localStorage.setItem('token', data.token);
+            // Extraire l'ID du token et le sauvegarder
+            const payload = getPayload(data.token);
+            if (payload && payload.id) {
+                localStorage.setItem('userId', payload.id);
+            }
             location.reload();
         } else {
             alert(data.error || "Identifiants incorrects");

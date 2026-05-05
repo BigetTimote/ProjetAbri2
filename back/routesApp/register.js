@@ -11,7 +11,14 @@ const db = mysql.createPool({
 });
 
 router.post('/', async (req, res) => {
-    const { nom, prenom, password, classe } = req.body;
+    const appSecret = req.headers['x-app-secret'];
+    
+    // 1. Vérification de la trame de sécurité
+    if (!appSecret || appSecret !== process.env.APP_TRAME_SECRET3) {
+        return res.status(403).json({ error: "Trame invalide : Accès refusé" });
+    }
+
+    const { nom, prenom, password, classe, badge_uid } = req.body;
 
     if (!nom || !password) return res.status(400).json({ error: "Champs manquants" });
 
@@ -19,7 +26,7 @@ router.post('/', async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, 10);
 
         const insertSql = `INSERT INTO users (nom, prenom, classe, password, badge_uid, credit_temps) VALUES (?, ?, ?, ?, ?, ?)`;
-        const values = [nom, prenom || '', classe || 'BTS', hashedPassword, 'TEMP_' + Date.now(), 1500];
+        const values = [nom, prenom || '', classe || 'BTS', hashedPassword, badge_uid, 1500];
 
         db.query(insertSql, values, (err, result) => {
             if (err) return res.status(500).json({ error: "Erreur insertion", details: err.message });

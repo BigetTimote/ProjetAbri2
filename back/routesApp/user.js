@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
 const mysql = require('mysql2');
-const authMiddleware = require('../middleware/authMiddleware');
 
 const db = mysql.createPool({
     host: process.env.DB_HOST,
@@ -10,12 +9,15 @@ const db = mysql.createPool({
     database: process.env.DB_NAME
 });
 
-router.get('/', authMiddleware, (req, res) => {
-    if (req.user.admin !== 1) {
-        return res.status(403).json({ error: "Accès interdit" });
+router.get('/', async (req, res) => {
+    const appSecret = req.headers['x-app-secret'];
+    
+    // 1. Vérification de la trame de sécurité
+    if (!appSecret || appSecret !== process.env.APP_TRAME_SECRET4) {
+        return res.status(403).json({ error: "Trame invalide : Accès refusé" });
     }
 
-    const sql = "SELECT badge_uid, nom, prenom FROM users ORDER BY nom ASC";
+    const sql = "SELECT badge_uid, nom, prenom, classe FROM users ORDER BY nom ASC";
     
     db.query(sql, (err, results) => {
         if (err) {

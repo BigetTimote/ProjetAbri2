@@ -5,6 +5,7 @@ const path = require('path');
 const { WebSocketServer } = require('ws'); 
 const mysql = require('mysql2');
 
+
 const app = express();
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
@@ -31,16 +32,20 @@ app.use((req, res, next) => {
 });
 
 app.set('wss', wss);
-app.use('/register', require('./routes/register'));
+app.use('/api/register', require('./routesApp/register'));
 app.use('/login', require('./routes/login'));
 app.use('/api/solde', require('./routes/solde'));
 app.use('/logout', require('./routes/logout'));
 app.use('/api/users', require('./routes/users'));
 app.use('/log', require('./routesRFID/verification'));
 app.use('/ard', require('./routesRFID/arduino'));
+app.use('/relais', require('./routesRFID/relais'));
 app.use('/api/modify', require('./routesApp/modify'));
 app.use('/api/delete', require('./routesApp/delete'));
+app.use('/api/user', require('./routesApp/user'));
 app.use('/api/notification', require('./notification'));
+app.use('/api/consos', require('./routesConsos/consos'));
+app.use('/api/affconsos', require('./routesConsos/affconsos'));
 const boxesRoutes = require('./routes/boxes');
 const boxesRoute = require('./routes/boxe');
 
