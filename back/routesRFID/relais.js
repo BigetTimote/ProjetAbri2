@@ -2,17 +2,17 @@ const express = require('express');
 const router  = express.Router();
 const dgram   = require('dgram');
 
-const { notifyArduino } = require('./arduino'); // réutilise la fonction existante
+const { notifyArduino } = require('./arduino'); 
 
 // ─────────────────────────────────────────────
 // Configuration IPLAB-8-RLY
 // ─────────────────────────────────────────────
 const IPLAB_IP       = process.env.IPLAB_IP || '172.29.16.67';
-const IPLAB_PORT     = 30302;   // Port UDP fixe (cf. manuel)
+const IPLAB_PORT     = 30302;   // Port UDP fixe manuel
 const CMD_TIMEOUT_MS = 3000;
 
 // ─────────────────────────────────────────────
-// IPLAB : envoi d'une commande UDP
+// IPLAB : commande UDP
 // ─────────────────────────────────────────────
 function envoyerCommandeIPLAB(commande) {
     return new Promise((resolve, reject) => {
@@ -47,9 +47,7 @@ function envoyerCommandeIPLAB(commande) {
 }
 
 // ─────────────────────────────────────────────
-// Envoi simultané Arduino + IPLAB
-// Promise.allSettled : une erreur sur l'un
-// n'empêche pas l'autre d'aboutir
+// Envoi Arduino + IPLAB
 // ─────────────────────────────────────────────
 async function ouvrirRelais1(accessData = {}, dureeMs = 5000) {
     console.log('[RELAIS] Ouverture simultanée Arduino + IPLAB relais 1');
@@ -102,7 +100,7 @@ async function envoyerRefus(accessData = {}) {
 // Routes Express
 // ─────────────────────────────────────────────
 
-// POST /relais/open  →  ouvre le relais 1 manuellement
+// POST /relais/open  ouvre le relais 1 manuellement
 router.post('/open', async (req, res) => {
     const { badge, user, credit, duree } = req.body;
     try {
@@ -118,7 +116,7 @@ router.post('/open', async (req, res) => {
     }
 });
 
-// GET /relais/status  →  lit l'état actuel du relais 1
+// GET /relais/status lit l'état actuel du relais 1
 router.get('/status', async (req, res) => {
     try {
         const reponse = await envoyerCommandeIPLAB('GR1');

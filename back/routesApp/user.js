@@ -17,7 +17,7 @@ router.get('/', async (req, res) => {
         return res.status(403).json({ error: "Trame invalide : Accès refusé" });
     }
 
-    const sql = "SELECT badge_uid, nom, prenom, classe FROM users ORDER BY nom ASC";
+    const sql = "SELECT id,badge_uid, nom, prenom, classe,credit_temps FROM users ORDER BY nom ASC";
     
     db.query(sql, (err, results) => {
         if (err) {

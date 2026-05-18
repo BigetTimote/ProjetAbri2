@@ -13,8 +13,7 @@ const db = mysql.createPool({
 module.exports = () => {
     console.log("--- INITIALISATION DU JOB CRON : OK ---");
 
-
-    cron.schedule('0 2 * * 1', () => { 
+    cron.schedule('0 2 * * 1', () => {
         resetLogic();
     }, { timezone: "Europe/Paris" });
 
@@ -22,7 +21,14 @@ module.exports = () => {
         const maintenant = new Date().toLocaleString();
         console.log(`[${maintenant}] Tentative de reset des crédits...`);
 
-        const sql = "UPDATE users SET credit_temps = 600 WHERE is_admin = 0";
+        const sql = `
+            UPDATE users 
+            SET credit_temps = CASE 
+                WHEN credit_temps < 0 THEN credit_temps + 600 
+                ELSE 600 
+            END 
+            WHERE is_admin = 0
+        `;
 
         db.query(sql, (err, result) => {
             if (err) {

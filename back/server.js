@@ -46,11 +46,14 @@ app.use('/api/user', require('./routesApp/user'));
 app.use('/api/notification', require('./notification'));
 app.use('/api/consos', require('./routesConsos/consos'));
 app.use('/api/affconsos', require('./routesConsos/affconsos'));
+app.use('/api/enregistrer', require('./routesConsos/enregistrer'));
 const boxesRoutes = require('./routes/boxes');
 const boxesRoute = require('./routes/boxe');
+const boxesAvailableRoute = require('./routes/public/boxesAvailable');
 
 app.use('/api/boxes', boxesRoutes);
 app.use('/api', boxesRoute);
+app.use('/api/boxes-available', boxesAvailableRoute);
 
 app.use(express.static(path.resolve(__dirname, '..')));
 

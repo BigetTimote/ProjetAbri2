@@ -26,7 +26,7 @@ router.post('/', async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, 10);
 
         const insertSql = `INSERT INTO users (nom, prenom, classe, password, badge_uid, credit_temps) VALUES (?, ?, ?, ?, ?, ?)`;
-        const values = [nom, prenom || '', classe || 'BTS', hashedPassword, badge_uid, 1500];
+        const values = [nom, prenom || '', classe || 'BTS', hashedPassword, badge_uid, 600];
 
         db.query(insertSql, values, (err, result) => {
             if (err) return res.status(500).json({ error: "Erreur insertion", details: err.message });

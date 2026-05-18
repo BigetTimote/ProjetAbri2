@@ -41,7 +41,6 @@ async function piloterArduino(action, data) {
 // ─────────────────────────────────────────────
 // Fonction pour déclencher le Relais 1 (IPLAB)
 // ─────────────────────────────────────────────
-// --- AJOUT 2 : Fonction pour piloter le relais 1 ---
 async function activerRelais1() {
     try {
         await envoyerCommandeIPLAB('SR1');
@@ -150,6 +149,39 @@ router.get('/', async (req, res) => {
                 piloterArduino('REFUSE', { user: user.prenom, credit: user.credit_temps });
                 return res.status(403).send('<root><buzz>2</buzz><ledr>10,5,2</ledr></root>');
             }
+            
+            // ── Contrainte des 25 heures ──────────────────────────────
+            /* Vérifier si l'utilisateur a fait un retrait il y a moins de 25h
+            const [lastSessions] = await connection.execute(
+                `SELECT * FROM Consommation_Session
+                 WHERE id_utilisateur = ? AND date_fin IS NOT NULL
+                 ORDER BY date_fin DESC LIMIT 1`,
+                [user.id]
+            );
+
+            if (lastSessions.length > 0 && user.is_admin === 0) {
+                const dernierDepot = moment(lastSessions[0].date_debut);
+                const now = moment();
+                const heuresDepuis = now.diff(dernierDepot, 'hours', true);
+                const DELAI_25H = 25;
+
+                if (heuresDepuis < DELAI_25H) {
+                    const dateAutorisee = dernierDepot.clone().add(DELAI_25H, 'hours');
+                    const resteMinutes = Math.ceil(dateAutorisee.diff(now, 'minutes', true));
+                    const resteHeures = Math.floor(resteMinutes / 60);
+                    const resteMin = resteMinutes % 60;
+
+                    console.log(
+                        `[REFUS] ${userName} | Raison : contrainte 25h non respectée | ` +
+                        `Dernier dépôt : ${dernierDepot.format('HH:mm DD/MM/YYYY')} | ` +
+                        `Accès autorisé à partir de : ${dateAutorisee.format('HH:mm DD/MM/YYYY')} | ` +
+                        `Temps restant : ${resteHeures}h ${resteMin}min`
+                    );
+                    piloterArduino('REFUSE', { user: user.prenom, credit: user.credit_temps });
+                    return res.status(403).send('<root><buzz>2</buzz><ledr>10,5,2</ledr></root>');
+                }
+            }
+                */
 
             // Vérifier s'il reste des boxes libres
             const [freeBoxes] = await connection.execute(
