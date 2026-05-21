@@ -1,0 +1,284 @@
+object Form1: TForm1
+  Left = 432
+  Height = 556
+  Top = 352
+  Width = 872
+  Caption = 'Digital Logic 2016 - Mutli Reader example - uFR Series'
+  ClientHeight = 556
+  ClientWidth = 872
+  OnCreate = FormCreate
+  LCLVersion = '1.6.0.4'
+  object Memo1: TMemo
+    Left = 25
+    Height = 90
+    Top = 448
+    Width = 819
+    Font.CharSet = ANSI_CHARSET
+    Font.Height = -15
+    Font.Name = 'Courier New'
+    Font.Pitch = fpFixed
+    Font.Quality = fqDraft
+    Lines.Strings = (
+      ''
+    )
+    ParentFont = False
+    ReadOnly = True
+    TabOrder = 0
+  end
+  object gbDevice: TGroupBox
+    Left = 392
+    Height = 209
+    Top = 8
+    Width = 452
+    Caption = 'Device'
+    ClientHeight = 184
+    ClientWidth = 448
+    TabOrder = 1
+    object labIndex: TLabel
+      Left = 18
+      Height = 20
+      Top = 40
+      Width = 60
+      Caption = '      '
+      Color = clInfoBk
+      Font.CharSet = ANSI_CHARSET
+      Font.Height = -17
+      Font.Name = 'Courier New'
+      Font.Pitch = fpFixed
+      Font.Quality = fqDraft
+      ParentColor = False
+      ParentFont = False
+      Transparent = False
+    end
+    object Label2: TLabel
+      Left = 21
+      Height = 20
+      Top = 14
+      Width = 36
+      Caption = 'Index'
+      ParentColor = False
+    end
+    object Label3: TLabel
+      Left = 96
+      Height = 20
+      Top = 14
+      Width = 45
+      Caption = 'Device'
+      ParentColor = False
+    end
+    object labDevice: TLabel
+      Left = 93
+      Height = 20
+      Top = 40
+      Width = 170
+      Caption = '                 '
+      Color = clInfoBk
+      Font.CharSet = ANSI_CHARSET
+      Font.Height = -17
+      Font.Name = 'Courier New'
+      Font.Pitch = fpFixed
+      Font.Quality = fqDraft
+      ParentColor = False
+      ParentFont = False
+      Transparent = False
+    end
+    object Label5: TLabel
+      Left = 272
+      Height = 20
+      Top = 14
+      Width = 61
+      Caption = 'Serial No'
+      ParentColor = False
+    end
+    object labSerial: TLabel
+      Left = 272
+      Height = 20
+      Top = 40
+      Width = 160
+      Caption = '                '
+      Color = clInfoBk
+      Font.CharSet = ANSI_CHARSET
+      Font.Height = -17
+      Font.Name = 'Courier New'
+      Font.Pitch = fpFixed
+      Font.Quality = fqDraft
+      ParentColor = False
+      ParentFont = False
+      Transparent = False
+    end
+    object btnGetCardInfo: TButton
+      Left = 18
+      Height = 58
+      Top = 80
+      Width = 107
+      Caption = 'Get Card Info'
+      Enabled = False
+      OnClick = btnGetCardInfoClick
+      TabOrder = 0
+    end
+    object labUID: TLabel
+      Left = 152
+      Height = 20
+      Top = 112
+      Width = 280
+      AutoSize = False
+      Caption = '                                                                      '
+      Color = clInfoBk
+      Font.CharSet = ANSI_CHARSET
+      Font.Height = -17
+      Font.Name = 'Courier New'
+      Font.Pitch = fpFixed
+      Font.Quality = fqDraft
+      ParentColor = False
+      ParentFont = False
+      Transparent = False
+    end
+    object labCtype: TLabel
+      Left = 152
+      Height = 20
+      Top = 80
+      Width = 280
+      AutoSize = False
+      Caption = '                                                                      '
+      Color = clInfoBk
+      Font.CharSet = ANSI_CHARSET
+      Font.Height = -17
+      Font.Name = 'Courier New'
+      Font.Pitch = fpFixed
+      Font.Quality = fqDraft
+      ParentColor = False
+      ParentFont = False
+      Transparent = False
+    end
+  end
+  object GroupBox2: TGroupBox
+    Left = 8
+    Height = 208
+    Top = 224
+    Width = 848
+    Caption = 'Device List'
+    ClientHeight = 183
+    ClientWidth = 844
+    TabOrder = 2
+    object sg1: TStringGrid
+      Left = 15
+      Height = 160
+      Top = 8
+      Width = 820
+      ColCount = 11
+      Columns = <      
+        item
+          Title.Caption = 'Index'
+        end      
+        item
+          Title.Caption = 'Handle'
+        end      
+        item
+          Title.Caption = 'Serial No.'
+        end      
+        item
+          Title.Caption = 'Dev Type'
+        end      
+        item
+          Title.Caption = 'FW Ver'
+        end      
+        item
+          Title.Caption = 'COMM port'
+        end      
+        item
+          Title.Caption = 'Speed'
+        end      
+        item
+          Title.Caption = 'FTDI Ser No'
+        end      
+        item
+          Title.Caption = 'FTDI Desc'
+        end      
+        item
+          Title.Caption = 'Is Opened'
+        end      
+        item
+          Title.Caption = 'Status'
+        end>
+      FixedCols = 0
+      Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goRowSelect, goSmoothScroll, goRowHighlight]
+      RowCount = 2
+      TabOrder = 0
+      OnSelectCell = sg1SelectCell
+    end
+  end
+  object GroupBox3: TGroupBox
+    Left = 16
+    Height = 209
+    Top = 8
+    Width = 361
+    ClientHeight = 184
+    ClientWidth = 357
+    TabOrder = 3
+    object btnGetCount: TButton
+      Left = 7
+      Height = 40
+      Top = -4
+      Width = 171
+      Caption = 'Get Device Count'
+      Enabled = False
+      OnClick = btnGetCountClick
+      TabOrder = 0
+    end
+    object Label1: TLabel
+      Left = 192
+      Height = 38
+      Top = -4
+      Width = 88
+      AutoSize = False
+      Caption = 'Number of Devices'
+      ParentColor = False
+      WordWrap = True
+    end
+    object ed1: TEdit
+      Left = 286
+      Height = 36
+      Top = 0
+      Width = 61
+      AutoSize = False
+      Font.CharSet = ANSI_CHARSET
+      Font.Height = -17
+      Font.Name = 'Courier New'
+      Font.Pitch = fpFixed
+      Font.Quality = fqDraft
+      ParentFont = False
+      ReadOnly = True
+      TabOrder = 1
+    end
+    object btnOpen: TButton
+      Left = 7
+      Height = 40
+      Top = 56
+      Width = 171
+      Caption = 'Open All Devices'
+      Enabled = False
+      OnClick = btnOpenClick
+      TabOrder = 2
+    end
+    object btnDevInfo: TButton
+      Left = 7
+      Height = 53
+      Top = 112
+      Width = 171
+      Caption = 'Get Device Info'
+      Enabled = False
+      OnClick = btnDevInfoClick
+      TabOrder = 3
+    end
+    object btnClose: TButton
+      Left = 224
+      Height = 25
+      Top = 67
+      Width = 75
+      Caption = 'Clsoe All Devices'
+      Enabled = False
+      OnClick = btnCloseClick
+      TabOrder = 4
+    end
+  end
+end

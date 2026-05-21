@@ -1,0 +1,1 @@
+QMAKE_CXXFLAGS += /utf-8
