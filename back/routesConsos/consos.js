@@ -5,9 +5,6 @@ const router = express.Router();
 router.post('/', (req, res) => {
     const consos = req.body;
     
-    console.log('📊 Consos reçues de l\'arduino:');
-    console.log(JSON.stringify(consos, null, 2));
-    
     res.json({ 
         success: true, 
         message: "Consos reçues et affichées en console" 

@@ -38,9 +38,6 @@ router.get('/', (req, res) => {
             return res.status(500).json({ error: "Erreur BDD", details: err.message });
         }
         
-        console.log('📊 Dernieres consos par utilisateur:');
-        console.log(JSON.stringify(results, null, 2));
-        
         res.json({
             success: true,
             data: results

@@ -50,10 +50,12 @@ app.use('/api/enregistrer', require('./routesConsos/enregistrer'));
 const boxesRoutes = require('./routes/boxes');
 const boxesRoute = require('./routes/boxe');
 const boxesAvailableRoute = require('./routes/public/boxesAvailable');
+const capteurRoutes = require('./routesRFID/capteur');
 
 app.use('/api/boxes', boxesRoutes);
 app.use('/api', boxesRoute);
 app.use('/api/boxes-available', boxesAvailableRoute);
+app.use('/api/capteur', capteurRoutes);
 
 app.use(express.static(path.resolve(__dirname, '..')));
 

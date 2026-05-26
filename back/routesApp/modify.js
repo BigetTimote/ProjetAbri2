@@ -11,7 +11,6 @@ const db = mysql.createPool({
     database: process.env.DB_NAME
 });
 
-// La route est montée sur /api/modify, donc ce point de terminaison est : /api/modify/user/:id
 router.put('/user/:id', async (req, res) => {
     const appSecret = req.headers['x-app-secret'];
     
@@ -21,14 +20,15 @@ router.put('/user/:id', async (req, res) => {
     }
 
     const userId = req.params.id;
-    const { nom, prenom, password, badge } = req.body;
+    const { nom, prenom, password, badge, credit_temps } = req.body;
     let updates = [];
     let values = [];
 
     // 2. Construction de la requête selon les champs reçus
-    if (nom) { updates.push("nom = ?"); values.push(nom); }
-    if (prenom) { updates.push("prenom = ?"); values.push(prenom); }
-    if (badge) { updates.push("badge_uid = ?"); values.push(badge); } // badge_uid en BDD
+    if (nom !== undefined) { updates.push("nom = ?"); values.push(nom); }
+    if (prenom !== undefined) { updates.push("prenom = ?"); values.push(prenom); }
+    if (badge !== undefined) { updates.push("badge_uid = ?"); values.push(badge); }
+    if (credit_temps !== undefined) { updates.push("credit_temps = ?"); values.push(credit_temps); }
     
     if (password) {
         const hashedPassword = await bcrypt.hash(password, 10);
@@ -47,12 +47,10 @@ router.put('/user/:id', async (req, res) => {
             return res.status(500).json({ error: "Erreur BDD", detail: err.message });
         }
 
-        // Vérifie si l'utilisateur existe
         if (result.affectedRows === 0) {
             return res.status(404).json({ error: `Utilisateur ${userId} non trouvé dans la table 'users'` });
         }
 
-        // 3. Génération du Token JWT
         const newToken = jwt.sign(
             { id: userId, username: nom || "user", admin: false }, 
             process.env.JWT_SECRET || 'secret_de_secours', 
@@ -65,8 +63,6 @@ router.put('/user/:id', async (req, res) => {
             token: newToken 
         });
     });
-    console.log("SECRET reçu:", req.headers['x-app-secret']);
-console.log("SECRET attendu:", process.env.APP_TRAME_SECRET);
 });
 
 module.exports = router;

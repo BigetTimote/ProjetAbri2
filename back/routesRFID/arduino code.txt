@@ -1,146 +1,82 @@
 #include <SPI.h>
 #include <Ethernet.h>
 
-// Configuration réseau
-byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
-IPAddress ip(172, 29, 18, 201); // Doit correspondre à ARDUINO_CONFIG.host
-EthernetServer server(8080);    // Doit correspondre à ARDUINO_CONFIG.port
+// --- CONFIGURATION RÉSEAU CORRIGÉE ---
+byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xEE }; 
+IPAddress ip(172, 29, 254, 51);        
+IPAddress dnsServer(172, 29, 254, 1);  
+IPAddress gateway(172, 29, 254, 1);    
+IPAddress subnet(255, 255, 255, 0);    
+
+IPAddress server(172, 29, 254, 14);  
+const int port = 3000;                 
+EthernetClient client;                 
+
+const int pinCapteur = 6;
+int etatPrecedent = LOW; 
 
 void setup() {
-    Serial.begin(9600);
-    while (!Serial);
+  Serial.begin(9600); 
+  pinMode(pinCapteur, INPUT_PULLUP);
 
-    Serial.println("[ARDUINO] Démarrage...");
+  // Initialisation réseau
+  Ethernet.begin(mac, ip, dnsServer, gateway, subnet);
+ 
+  delay(1500); 
+  Serial.print("Système prêt ! IP de l'Arduino Capteur : ");
+  Serial.println(Ethernet.localIP());
 
-    Ethernet.begin(mac, ip);
+  etatPrecedent = digitalRead(pinCapteur);
+}
 
-    if (Ethernet.hardwareStatus() == EthernetNoHardware) {
-        Serial.println("[ERREUR] Shield Ethernet non détecté !");
-        while (true);
+void envoyerAlerteOuverture() {
+  Serial.println("\n[ALERTE] Connexion vers 172.29.254.14:3000...");
+
+  if (client.connect(server, port)) {
+    Serial.println("[ALERTE] Connecté ! Transmission du POST...");
+
+    String json = "{\"etat\":\"ouvert\", \"source\":\"capteur_pin6\"}";
+
+    client.println("POST /api/capteur HTTP/1.1");
+    client.println("Host: 172.29.254.14:3000");
+    client.println("Content-Type: application/json");
+    client.println("Connection: close");
+    client.print("Content-Length: ");
+    client.println(json.length());
+    client.println();     
+    client.println(json); 
+   
+    Serial.println("Payload envoyé : " + json);
+    
+    unsigned long strTime = millis();
+    while (client.connected() && (millis() - strTime < 2000)) {
+      if (client.available()) {
+        char c = client.read();
+        Serial.print(c);
+      }
     }
-
-    if (Ethernet.linkStatus() == LinkOFF) {
-        Serial.println("[AVERTISSEMENT] Câble Ethernet non connecté.");
-    }
-
-    server.begin();
-    Serial.print("[ARDUINO] Serveur démarré sur ");
-    Serial.print(Ethernet.localIP());
-    Serial.print(":");
-    Serial.println(8080);
-    Serial.println("[ARDUINO] En attente de messages...");
+    client.stop();
+  } else {
+    
+    Serial.println("[ERREUR] Échec de connexion TCP. Vérifier pare-feu du serveur ou câblage.");
+  }
 }
 
 void loop() {
-    EthernetClient client = server.available();
+  int etatActuel = digitalRead(pinCapteur);
 
-    if (client) {
-        Serial.println("--------------------------------------------------");
-        Serial.println("[ARDUINO] Nouvelle connexion reçue");
+  if (etatActuel == HIGH && etatPrecedent == LOW) {
+    Serial.println("\n[EVENEMENT] Front montant détecté (Ouverture)");
+    envoyerAlerteOuverture();
+  }
+  
+  etatPrecedent = etatActuel;
 
-        String requestLine = "";
-        String body = "";
-        bool isBody = false;
-        int contentLength = 0;
+  if (etatActuel == HIGH) {
+    Serial.println("[CAPTEUR] Pin 6 : HIGH (Ouvert)");
+  } else {
+    Serial.println("[CAPTEUR] Pin 6 : LOW  (Fermé)");
+  }
 
-        // Lecture des headers et du body
-        while (client.connected()) {
-            if (client.available()) {
-                char c = client.read();
-
-                if (!isBody) {
-                    requestLine += c;
-
-                    // Extraction du Content-Length
-                    if (requestLine.endsWith("Content-Length: ")) {
-                        String lenStr = "";
-                        while (client.available()) {
-                            char lc = client.read();
-                            if (lc == '\r') break;
-                            lenStr += lc;
-                        }
-                        contentLength = lenStr.toInt();
-                    }
-
-                    // Détection de la fin des headers (ligne vide)
-                    if (requestLine.endsWith("\r\n\r\n")) {
-                        isBody = true;
-                        requestLine = "";
-                    }
-                } else {
-                    body += c;
-                    if ((int)body.length() >= contentLength && contentLength > 0) {
-                        break;
-                    }
-                }
-            }
-        }
-
-        // Affichage du body JSON reçu
-        Serial.println("[ARDUINO] Message reçu :");
-        Serial.println(body);
-
-        // Parsing manuel des champs JSON courants
-        Serial.println("[ARDUINO] Champs détectés :");
-        printJsonField(body, "access");
-        printJsonField(body, "badge");
-        printJsonField(body, "user");
-        printJsonField(body, "credit");
-        printJsonField(body, "timestamp");
-        printJsonField(body, "type");
-
-        // Réponse HTTP 200 OK
-        client.println("HTTP/1.1 200 OK");
-        client.println("Content-Type: application/json");
-        client.println("Connection: close");
-        client.println();
-        client.println("{\"status\":\"ok\",\"message\":\"Recu\"}");
-
-        delay(10);
-        client.stop();
-
-        Serial.println("[ARDUINO] Connexion fermée");
-        Serial.println("--------------------------------------------------");
-    }
-}
-
-// Extrait et affiche la valeur d'un champ JSON par son nom
-void printJsonField(String json, String key) {
-    String search = "\"" + key + "\"";
-    int keyIndex = json.indexOf(search);
-
-    if (keyIndex == -1) return;
-
-    int colonIndex = json.indexOf(":", keyIndex);
-    if (colonIndex == -1) return;
-
-    // Passe les espaces après ':'
-    int valueStart = colonIndex + 1;
-    while (valueStart < (int)json.length() && json[valueStart] == ' ') {
-        valueStart++;
-    }
-
-    String value = "";
-
-    if (json[valueStart] == '"') {
-        // Valeur string
-        valueStart++;
-        int valueEnd = json.indexOf("\"", valueStart);
-        value = json.substring(valueStart, valueEnd);
-    } else {
-        // Valeur numérique ou booléenne
-        int valueEnd = valueStart;
-        while (valueEnd < (int)json.length() &&
-               json[valueEnd] != ',' &&
-               json[valueEnd] != '}') {
-            valueEnd++;
-        }
-        value = json.substring(valueStart, valueEnd);
-        value.trim();
-    }
-
-    Serial.print("  ");
-    Serial.print(key);
-    Serial.print(" = ");
-    Serial.println(value);
+  delay(1000); 
 }

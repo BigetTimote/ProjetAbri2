@@ -164,27 +164,75 @@ async function fetchBoxes() {
 //  INITIALISATION ET TEMPS RÉEL 
 
 function setupRealtime() {
-    // Utiliser wss:// si HTTPS, ws:// si HTTP
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = window.location.host;
-    const socket = new WebSocket(`${protocol}//${host}`);
-    socket.onopen = () => console.log("Temps réel actif");
-    socket.onmessage = (event) => {
+    // Solution simple et qui marche : polling HTTP/HTTPS
+    // Vérifier l'état du capteur toutes les 2 secondes
+    let lastEventTime = 0;
+    
+    setInterval(async () => {
         try {
-            const data = JSON.parse(event.data);
-            if (data.type === 'UPDATE_TIME') fetchSolde();
-            if (data.type === 'BOX_UPDATE') {
-                fetchBoxes();
-                fetchBoxesAvailable(); // Rafraîchir aussi pour les utilisateurs
+            const userId = localStorage.getItem('userId');
+            if (!userId) return;
+            
+            const boxId = 1;
+            const res = await fetch(`${API_URL}/api/capteur/check/${boxId}/${userId}`);
+            
+            if (res.ok) {
+                const data = await res.json();
+                
+                // Si une alerte capteur existe
+                if (data.hasEvent && data.event) {
+                    // Vérifier qu'on affiche pas deux fois la même alerte
+                    if (Date.now() - lastEventTime > 1000) {
+                        showBoxOpenAlert({
+                            type: 'BOX_OUVERT',
+                            message: 'BOX OUVERT',
+                            timestamp: new Date().toLocaleTimeString('fr-FR')
+                        });
+                        lastEventTime = Date.now();
+                    }
+                }
             }
-        } catch (e) { console.debug("Message WebSocket invalide"); }
-    };
-    socket.onerror = (err) => {
-        console.debug("WebSocket reconnecting...");
-    };
-    socket.onclose = () => {
-        setTimeout(setupRealtime, 10000);
-    };
+        } catch (e) {
+            // Erreur silencieuse
+        }
+    }, 2000);
+}
+
+function showBoxOpenAlert(data) {
+    // Créer une alerte visuelle
+    const alert = document.createElement('div');
+    alert.className = 'alert alert-success alert-dismissible fade show';
+    alert.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 9999;
+        min-width: 300px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        animation: slideInRight 0.3s ease-out;
+    `;
+    alert.innerHTML = `
+        <strong>✓ BOX OUVERT</strong>
+        <p class="mb-1">${data.message}</p>
+        <small class="text-muted">${data.timestamp}</small>
+        <button type="button" class="btn-close" aria-label="Close"></button>
+    `;
+    document.body.appendChild(alert);
+    
+    // Gestionnaire pour le bouton de fermeture
+    const closeBtn = alert.querySelector('.btn-close');
+    closeBtn.addEventListener('click', () => {
+        alert.remove();
+    });
+    
+    console.log('[CLIENT] BOX OUVERT reçu!', data);
+    
+    // Supprimer l'alerte automatiquement après 1 minute
+    setTimeout(() => {
+        if (alert.parentNode) {
+            alert.remove();
+        }
+    }, 60000);
 }
 
 function setupAutoRefresh() {
@@ -272,7 +320,6 @@ async function loadUserConsos() {
         }
 
         const apiData = await response.json();
-        console.log("📊 Données reçues:", apiData);
         
         const userSession = apiData.data.find(session => session.id == userId);
         console.log("👤 Session trouvée:", userSession);
@@ -312,15 +359,39 @@ async function loadUserConsos() {
                         <h3 class="display-5 fw-bold mb-3">⚡</h3>
                         <p class="fs-5 fw-bold">Véhicule en cours de charge</p>
                         <p class="text-muted mb-0">Début: <strong>${dateDebut ? dateDebut.toLocaleString('fr-FR') : '-'}</strong></p>
+                        <p class="fs-6 fw-bold mt-3" id="elapsedTime">Durée: <span id="elapsedCounter">0h 00m 00s</span></p>
                     </div>
                 `;
+                
+                // Mettre à jour le compteur chaque seconde
+                const updateElapsedTime = () => {
+                    if (dateDebut) {
+                        const now = new Date();
+                        const elapsed = Math.floor((now - dateDebut) / 1000); // en secondes
+                        const hours = Math.floor(elapsed / 3600);
+                        const minutes = Math.floor((elapsed % 3600) / 60);
+                        const seconds = elapsed % 60;
+                        
+                        const counterEl = document.getElementById('elapsedCounter');
+                        if (counterEl) {
+                            counterEl.textContent = `${hours}h ${String(minutes).padStart(2, '0')}m ${String(seconds).padStart(2, '0')}s`;
+                        }
+                    }
+                };
+                
+                // Appel initial et mise à jour chaque seconde
+                updateElapsedTime();
+                const intervalId = setInterval(updateElapsedTime, 1000);
+                
+                // Sauvegarder l'ID pour pouvoir l'arrêter si nécessaire
+                window.elapsedTimeInterval = intervalId;
             }
             return;
         }
 
-        // Calcul du prochain dépôt possible (25h après la fin de la dernière session)
+        // Calcul du prochain dépôt possible (25h après le début de la dernière session)
         if (dateFin) {
-            const prochainDepot = new Date(dateFin.getTime() + (25 * 60 * 60 * 1000)); // Ajouter 25h
+            const prochainDepot = new Date(dateDebut.getTime() + (25 * 60 * 60 * 1000)); // Ajouter 25h
             const maintenant = new Date();
             
             console.log("🔍 Debug prochain dépôt:");

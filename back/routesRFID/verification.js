@@ -4,8 +4,8 @@ const mysql = require('mysql2/promise');
 const moment = require('moment');
 const axios = require('axios');
 
-// --- AJOUT 1 : Importation de la fonction du relais ---
-const { envoyerCommandeIPLAB } = require('./relais');
+// --- Importation des méthodes de l'étudiant 1 (relais.js) ---
+const { ouvrirRelais1, envoyerRefus } = require('./relais');
 
 const ARDUINO_IP = 'http://172.29.18.201:8080';
 
@@ -39,18 +39,6 @@ async function piloterArduino(action, data) {
 }
 
 // ─────────────────────────────────────────────
-// Fonction pour déclencher le Relais 1 (IPLAB)
-// ─────────────────────────────────────────────
-async function activerRelais1() {
-    try {
-        await envoyerCommandeIPLAB('SR1');
-        console.log('[IPLAB] Relais 1 OUVERT');
-    } catch (err) {
-        console.error('[IPLAB] Erreur à l\'ouverture :', err.message);
-    }
-}
-
-// ─────────────────────────────────────────────
 // Route principale : scan de badge
 // ─────────────────────────────────────────────
 router.get('/', async (req, res) => {
@@ -78,6 +66,8 @@ router.get('/', async (req, res) => {
         if (users.length === 0) {
             console.log(`[REFUS] Badge inconnu : ${cardId}`);
             piloterArduino('REFUSE', { user: "INCONNU" });
+            // Appel de l'API étudiant 1 : refus relais
+            await envoyerRefus({ badge: cardId, user: "INCONNU" });
             return res.status(401).send('<root><buzz>2</buzz><ledr>10,5,2</ledr></root>');
         }
 
@@ -132,10 +122,13 @@ router.get('/', async (req, res) => {
             );
 
             piloterArduino('OPEN_BOX', { box: box.numero, user: user.prenom, credit: nouveauCredit });
-            
-            // --- AJOUT 3A : Déclencher le relais en mode retrait ---
-            activerRelais1(); 
-            
+
+            // Appel de l'API étudiant 1 : ouverture relais + fermeture automatique après 5s
+            await ouvrirRelais1(
+                { badge: cardId, user: userName, credit: nouveauCredit, box: box.numero },
+                10000
+            );
+
             return res.status(200).send('<root><buzz>1</buzz><ledg>20,0,1</ledg><open>1</open></root>');
 
         } else {
@@ -147,6 +140,8 @@ router.get('/', async (req, res) => {
                     `[REFUS] ${userName} | Raison : crédit épuisé (${user.credit_temps} min)`
                 );
                 piloterArduino('REFUSE', { user: user.prenom, credit: user.credit_temps });
+                // Appel de l'API étudiant 1 : refus relais
+                await envoyerRefus({ badge: cardId, user: userName, credit: user.credit_temps });
                 return res.status(403).send('<root><buzz>2</buzz><ledr>10,5,2</ledr></root>');
             }
             
@@ -178,6 +173,7 @@ router.get('/', async (req, res) => {
                         `Temps restant : ${resteHeures}h ${resteMin}min`
                     );
                     piloterArduino('REFUSE', { user: user.prenom, credit: user.credit_temps });
+                    await envoyerRefus({ badge: cardId, user: userName, credit: user.credit_temps });
                     return res.status(403).send('<root><buzz>2</buzz><ledr>10,5,2</ledr></root>');
                 }
             }
@@ -214,10 +210,13 @@ router.get('/', async (req, res) => {
             );
 
             piloterArduino('OPEN_BOX', { box: box.numero, user: user.prenom, credit: user.credit_temps });
-            
-            // --- AJOUT 3B : Déclencher le relais en mode dépôt ---
-            activerRelais1();
-            
+
+            // Appel de l'API étudiant 1 : ouverture relais + fermeture automatique après 5s
+            await ouvrirRelais1(
+                { badge: cardId, user: userName, credit: user.credit_temps, box: box.numero },
+                5000
+            );
+
             return res.status(200).send('<root><buzz>1</buzz><ledg>20,0,1</ledg><open>1</open></root>');
         }
 
