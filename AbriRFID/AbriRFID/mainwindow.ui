@@ -1,0 +1,236 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>900</width>
+    <height>600</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Gestion Abri RFID</string>
+  </property>
+  <widget class="QWidget" name="centralWidget">
+   <layout class="QVBoxLayout" name="verticalLayout">
+
+    <item>
+     <widget class="QGroupBox" name="groupBoxRFID">
+      <property name="title">
+       <string>Connexion Lecteur RFID</string>
+      </property>
+      <layout class="QHBoxLayout" name="horizontalLayout">
+       <item>
+        <widget class="QLabel" name="labelPort">
+         <property name="text">
+          <string>Port :</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QComboBox" name="comboBoxPorts"/>
+       </item>
+       <item>
+        <widget class="QPushButton" name="btnRefreshPorts">
+         <property name="text">
+          <string>Actualiser Ports</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="btnConnectRFID">
+         <property name="text">
+          <string>Connecter RFID</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <spacer name="horizontalSpacer">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </widget>
+    </item>
+
+    <item>
+     <widget class="QGroupBox" name="groupBoxUsers">
+      <property name="title">
+       <string>Liste des Utilisateurs</string>
+      </property>
+      <layout class="QVBoxLayout" name="verticalLayout_2">
+       <item>
+        <widget class="QTableView" name="tableViewUsers"/>
+       </item>
+      </layout>
+     </widget>
+    </item>
+
+    <item>
+     <widget class="QGroupBox" name="groupBoxBadge">
+      <property name="title">
+       <string>Badge Détecté</string>
+      </property>
+      <layout class="QHBoxLayout" name="horizontalLayout_2">
+       <item>
+        <widget class="QLabel" name="labelBadge">
+         <property name="text">
+          <string>Badge UID :</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLineEdit" name="lineEditBadge">
+         <property name="readOnly">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </item>
+
+    <item>
+     <widget class="QGroupBox" name="groupBoxForm">
+      <property name="title">
+       <string>Informations Utilisateur</string>
+      </property>
+      <layout class="QGridLayout" name="gridLayout">
+       <item row="0" column="0">
+        <widget class="QLabel" name="labelNom">
+         <property name="text">
+          <string>Nom :</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="1">
+        <widget class="QLineEdit" name="lineEditNom"/>
+       </item>
+       <item row="0" column="2">
+        <widget class="QLabel" name="labelPrenom">
+         <property name="text">
+          <string>Prénom :</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="3">
+        <widget class="QLineEdit" name="lineEditPrenom"/>
+       </item>
+       <item row="1" column="0">
+        <widget class="QLabel" name="labelClasse">
+         <property name="text">
+          <string>Classe :</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="1">
+        <widget class="QLineEdit" name="lineEditClasse">
+         <property name="placeholderText">
+          <string>Ex: BTS, 3ème, etc.</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="2" colspan="2">
+        <spacer name="horizontalSpacer_2">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </widget>
+    </item>
+
+    <item>
+     <widget class="QGroupBox" name="groupBoxActions">
+      <property name="title">
+       <string>Actions</string>
+      </property>
+      <layout class="QHBoxLayout" name="horizontalLayout_3">
+       <item>
+        <widget class="QPushButton" name="btnAjouter">
+         <property name="text">
+          <string>✓ Ajouter Utilisateur</string>
+         </property>
+         <property name="styleSheet">
+          <string>background-color: #4CAF50; color: white; font-weight: bold;</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="btnModifier">
+         <property name="text">
+          <string>✎ Modifier Utilisateur</string>
+         </property>
+         <property name="styleSheet">
+          <string>background-color: #2196F3; color: white; font-weight: bold;</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="btnSupprimer">
+         <property name="text">
+          <string>✗ Supprimer Utilisateur</string>
+         </property>
+         <property name="styleSheet">
+          <string>background-color: #f44336; color: white; font-weight: bold;</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="btnDocumentation">
+         <property name="text">
+          <string>? Aide</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <spacer name="horizontalSpacer_3">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </widget>
+    </item>
+
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menuBar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>900</width>
+     <height>21</height>
+    </rect>
+   </property>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
