@@ -6,7 +6,7 @@ const webpush = require('web-push');
 
 // Utilisation d'un pool pour mieux gérer la connexion distante
 const db = mysql.createPool({
-    host: process.env.DB_HOST, // <--- Vérifie bien que c'est l'IP de l'autre VM
+    host: process.env.DB_HOST, 
     user: process.env.DB_USER,
     password: process.env.DB_PASS,
     database: process.env.DB_NAME,
@@ -41,7 +41,7 @@ router.post('/subscribe', authMiddleware, (req, res) => {
             console.error('❌ Erreur SQL sur VM distante:', err);
             return res.status(500).json({ error: "Erreur sauvegarde" });
         }
-        console.log(`✅ Subscription enregistrée pour user ${userId}`);
+        console.log(` Subscription enregistrée pour user ${userId}`);
         res.json({ message: "Subscription enregistrée" });
     });
 });
@@ -50,11 +50,8 @@ router.post('/subscribe', authMiddleware, (req, res) => {
 router.get('/session-info', authMiddleware, (req, res) => {
     const userId = req.user.id;
     
-    // CORRECTION : 
-    // 1. CoNsommation (avec un 'n')
-    // 2. _Session (avec un 'S' majuscule)
     const sql = `
-        SELECT id_utilisateur, date_debut, 
+        SELECT id_utilisateur, date_debut, notification_sent,
         TIMESTAMPDIFF(MINUTE, date_debut, NOW()) as minutes_ecoulees
         FROM Consommation_Session 
         WHERE id_utilisateur = ? 
@@ -71,17 +68,19 @@ router.get('/session-info', authMiddleware, (req, res) => {
         if (results.length === 0) {
             return res.json({ 
                 session_active: false,
-                session_duration_minutes: 0
+                session_duration_minutes: 0,
+                notification_sent: false
             });
         }
 
         const minutes = results[0].minutes_ecoulees;
+        const notificationSent = results[0].notification_sent === 1;
         
         res.json({
             session_active: true,
             session_duration_minutes: minutes,
-            notification_sent: minutes >= 120,
-            time_remaining_minutes: Math.max(0, 120 - minutes)
+            notification_sent: notificationSent,
+            will_notify_at: minutes >= 1 ? true : false
         });
     });
 });

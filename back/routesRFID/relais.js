@@ -1,186 +1,235 @@
 const express = require('express');
-const router  = express.Router();
 const dgram   = require('dgram');
 
 // ─────────────────────────────────────────────
-// Configuration IPLAB-8-RLY
+// Classe : Client UDP pour communiquer avec IPLAB
 // ─────────────────────────────────────────────
-const IPLAB_IP       = process.env.IPLAB_IP;
-const IPLAB_PORT     = 30302;
-const CMD_TIMEOUT_MS = 3000;
+class ClientIPLAB {
+    #ip;
+    #port;
+    #timeoutMs;
 
-// ─────────────────────────────────────────────
-//    box → relais
-//  Box 1 → Relais 1, 2, 3 (1 = gâche)
-//  Box 2 → Relais 4, 5, 6 (4 = gâche)
-//  Box 3 → Relais 7, 8    (7 = gâche)
-// ─────────────────────────────────────────────
-const BOX_RELAIS = {
-    1: [1, 2, 3],
-    2: [4, 5, 6],
-    3: [7, 8]
-};
+    constructor(ip, port = 30302, timeoutMs = 3000) {
+        this.#ip        = ip;
+        this.#port      = port;
+        this.#timeoutMs = timeoutMs;
+    }
 
-// ─────────────────────────────────────────────
-// État des box (false = 1er passage, true = 2ème passage)
-// ─────────────────────────────────────────────
-const etatsBox = {
-    1: false,
-    2: false,
-    3: false
-};
+    envoyerCommande(commande) {
+        return new Promise((resolve, reject) => {
+            const client  = dgram.createSocket('udp4');
+            const message = Buffer.from(commande);
 
-// ─────────────────────────────────────────────
-// IPLAB : commande UDP
-// ─────────────────────────────────────────────
-function envoyerCommandeIPLAB(commande) {
-    return new Promise((resolve, reject) => {
-        const client  = dgram.createSocket('udp4');
-        const message = Buffer.from(commande);
+            const timer = setTimeout(() => {
+                client.close();
+                reject(new Error(`[IPLAB] Timeout pour la commande "${commande}"`));
+            }, this.#timeoutMs);
 
-        const timer = setTimeout(() => {
-            client.close();
-            reject(new Error(`[IPLAB] Timeout pour la commande "${commande}"`));
-        }, CMD_TIMEOUT_MS);
+            client.on('message', (msg) => {
+                clearTimeout(timer);
+                client.close();
+                resolve(msg.toString().trim());
+            });
 
-        client.on('message', (msg) => {
-            clearTimeout(timer);
-            client.close();
-            resolve(msg.toString().trim());
-        });
-
-        client.on('error', (err) => {
-            clearTimeout(timer);
-            client.close();
-            reject(err);
-        });
-
-        client.send(message, 0, message.length, IPLAB_PORT, IPLAB_IP, (err) => {
-            if (err) {
+            client.on('error', (err) => {
                 clearTimeout(timer);
                 client.close();
                 reject(err);
-            }
+            });
+
+            client.send(message, 0, message.length, this.#port, this.#ip, (err) => {
+                if (err) {
+                    clearTimeout(timer);
+                    client.close();
+                    reject(err);
+                }
+            });
         });
-    });
+    }
 }
 
 // ─────────────────────────────────────────────
-// Contrôle Relais IPLAB
+// Classe : Représente un Box (emplacement vélo)
 // ─────────────────────────────────────────────
-async function ouvrirRelais1(data = {}) {
-    const boxNumero = data.box;
-    const relais    = BOX_RELAIS[boxNumero];
+class Box {
+    #numero;
+    #relais;
+    #deuxiemePassage;
 
-    if (!relais) {
-        console.warn(`[RELAIS] Box inconnu : ${boxNumero} — aucun relais activé`);
-        return 'BOX_INCONNU';
+    constructor(numero, relais) {
+        this.#numero          = numero;
+        this.#relais          = relais;   // ex: [1, 2, 3]
+        this.#deuxiemePassage = false;
     }
 
-    const estDeuxiemePassage = etatsBox[boxNumero];
+    get numero()          { return this.#numero; }
+    get relais()          { return [...this.#relais]; }
+    get gache()           { return this.#relais[0]; }
+    get autresRelais()    { return this.#relais.slice(1); }
+    get estDeuxiemePassage() { return this.#deuxiemePassage; }
 
-   // l'utilisateur entre son vélo
-    if (!estDeuxiemePassage) {
+    marquerPremierPassage()   { this.#deuxiemePassage = false; }
+    marquerDeuxiemePassage()  { this.#deuxiemePassage = true; }
+    reinitialiser()           { this.#deuxiemePassage = false; }
+}
+
+// ─────────────────────────────────────────────
+// Classe : Gestionnaire de tous les Box + logique relais
+// ─────────────────────────────────────────────
+class GestionnaireRelais {
+    #client;
+    #boxes;
+
+    constructor(clientIPLAB) {
+        this.#client = clientIPLAB;
+        this.#boxes  = new Map([
+            [1, new Box(1, [1, 2, 3])],
+            [2, new Box(2, [4, 5, 6])],
+            [3, new Box(3, [7, 8])]
+        ]);
+    }
+
+    getBox(numero) {
+        return this.#boxes.get(numero) ?? null;
+    }
+
+    async ouvrirRelais(boxNumero) {
+        const box = this.getBox(boxNumero);
+
+        if (!box) {
+            console.warn(`[RELAIS] Box inconnu : ${boxNumero} — aucun relais activé`);
+            return 'BOX_INCONNU';
+        }
+
+        // 1er passage : l'utilisateur entre son vélo → tout ouvrir
+        if (!box.estDeuxiemePassage) {
+            for (const r of box.relais) {
+                try {
+                    const reponse = await this.#client.envoyerCommande(`SR${r}`);
+                    console.log(`[IPLAB] Relais ${r} activé, réponse : ${reponse}`);
+                } catch (err) {
+                    console.error(`[IPLAB] Erreur à l'ouverture du relais ${r} :`, err.message);
+                }
+            }
+
+            box.marquerDeuxiemePassage();
+            return 'OUVERTURE_TOTALE';
+
+        // 2ème passage : l'utilisateur sort son vélo → gâche seule + fermer le reste
+        } else {
+            try {
+                const reponse = await this.#client.envoyerCommande(`SR${box.gache}`);
+                console.log(`[IPLAB] Relais ${box.gache} (Gâche) activé, réponse : ${reponse}`);
+            } catch (err) {
+                console.error(`[IPLAB] Erreur à l'ouverture de la gâche ${box.gache} :`, err.message);
+            }
+
+            for (const r of box.autresRelais) {
+                try {
+                    const reponse = await this.#client.envoyerCommande(`CR${r}`);
+                    console.log(`[IPLAB] Relais ${r} fermé, réponse : ${reponse}`);
+                } catch (err) {
+                    console.error(`[IPLAB] Erreur à la fermeture du relais ${r} :`, err.message);
+                }
+            }
+
+            box.reinitialiser();
+            return 'OUVERTURE_GACHE_SEULE';
+        }
+    }
+
+    async envoyerRefus(boxNumero) {
+        const box    = this.getBox(boxNumero);
+        const relais = box ? box.relais : [1];
+
+        console.log(`[RELAIS] Refus — Fermeture des relais ${relais.join(', ')}${boxNumero ? ` (box ${boxNumero})` : ' (défaut)'}`);
+
         for (const r of relais) {
             try {
-                const reponse = await envoyerCommandeIPLAB(`SR${r}`);
-                console.log(`[IPLAB] Relais ${r} activé, réponse : ${reponse}`);
-            } catch (err) {
-                console.error(`[IPLAB] Erreur à l'ouverture du relais ${r} :`, err.message);
-            }
-        }
-        
-        etatsBox[boxNumero] = true;
-        return 'OUVERTURE_TOTALE';
-
-    } else {
-        // l'utilisateur sort son vélo
-        const gache = relais[0];
-        const autresRelais = relais.slice(1);
-    
-        try {
-            const reponse = await envoyerCommandeIPLAB(`SR${gache}`);
-            console.log(`[IPLAB] Relais ${gache} (Gâche) activé, réponse : ${reponse}`);
-        } catch (err) {
-            console.error(`[IPLAB] Erreur à l'ouverture de la gâche ${gache} :`, err.message);
-        }
-
-        // fermer les autres relais du box
-        for (const r of autresRelais) {
-            try {
-                const reponse = await envoyerCommandeIPLAB(`CR${r}`);
-                console.log(`[IPLAB] Relais ${r} fermé, réponse : ${reponse}`);
+                await this.#client.envoyerCommande(`CR${r}`);
+                console.log(`[IPLAB] Relais ${r} fermé (suite au refus)`);
             } catch (err) {
                 console.error(`[IPLAB] Erreur à la fermeture du relais ${r} :`, err.message);
             }
         }
 
-        // Réinitialise l'état pour le prochain client
-        etatsBox[boxNumero] = false;
-        return 'OUVERTURE_GACHE_SEULE';
+        if (box) box.reinitialiser();
+    }
+
+    async lireStatutRelais(numeroRelais) {
+        const reponse = await this.#client.envoyerCommande(`GR${numeroRelais}`);
+        return reponse === '1' ? 'ACTIF' : 'INACTIF';
     }
 }
 
-async function envoyerRefus(data = {}) {
-    const boxNumero = data.box;
-    const relais    = BOX_RELAIS[boxNumero] || [1];
+// ─────────────────────────────────────────────
+// Classe : Routeur Express pour l'API relais
+// ─────────────────────────────────────────────
+class RouteurRelais {
+    #gestionnaire;
+    router;
 
-    console.log(`[RELAIS] Refus — Fermeture des relais ${relais.join(', ')}${boxNumero ? ` (box ${boxNumero})` : ' (défaut)'}`);
+    constructor(gestionnaire) {
+        this.#gestionnaire = gestionnaire;
+        this.router        = express.Router();
+        this.#initialiserRoutes();
+    }
 
-    for (const r of relais) {
+    #initialiserRoutes() {
+        this.router.post('/open',   this.#handleOpen.bind(this));
+        this.router.get('/status',  this.#handleStatus.bind(this));
+    }
+
+    async #handleOpen(req, res) {
+        const boxNumero = req.body?.box;
+
+        if (!this.#gestionnaire.getBox(boxNumero)) {
+            return res.status(400).json({
+                success: false,
+                error: `Box invalide : ${boxNumero}. Valeurs acceptées : 1, 2, 3`
+            });
+        }
+
         try {
-            await envoyerCommandeIPLAB(`CR${r}`);
-            console.log(`[IPLAB] Relais ${r} fermé (suite au refus)`);
+            const actionEffectuee = await this.#gestionnaire.ouvrirRelais(boxNumero);
+            res.json({
+                success: true,
+                action:  actionEffectuee,
+                message: `Action traitée pour le box ${boxNumero} : ${actionEffectuee}`
+            });
         } catch (err) {
-            console.error(`[IPLAB] Erreur à la fermeture du relais ${r} :`, err.message);
+            console.error('[RELAIS] Erreur :', err.message);
+            res.status(500).json({
+                success: false,
+                error: 'Erreur lors de la communication avec la carte relais'
+            });
         }
     }
-    
-    if (boxNumero && etatsBox[boxNumero] !== undefined) {
-        etatsBox[boxNumero] = false;
+
+    async #handleStatus(req, res) {
+        const r = parseInt(req.query.relais) || 1;
+        try {
+            const statut  = await this.#gestionnaire.lireStatutRelais(r);
+            const reponse = await this.#gestionnaire.lireStatutRelais(r);
+            res.json({
+                success:        true,
+                [`relais${r}`]: statut,
+                raw:            reponse
+            });
+        } catch (err) {
+            res.status(503).json({ success: false, error: err.message });
+        }
     }
 }
 
 // ─────────────────────────────────────────────
-// Routes Express
+// Instanciation & export
 // ─────────────────────────────────────────────
-router.post('/open', async (req, res) => {
-    const boxNumero = req.body?.box;
-    
-    if (!BOX_RELAIS[boxNumero]) {
-        return res.status(400).json({ success: false, error: `Box invalide : ${boxNumero}. Valeurs acceptées : 1, 2, 3` });
-    }
+const clientIPLAB    = new ClientIPLAB(process.env.IPLAB_IP);
+const gestionnaire   = new GestionnaireRelais(clientIPLAB);
+const routeurRelais  = new RouteurRelais(gestionnaire);
 
-    try {
-        const actionEffectuee = await ouvrirRelais1({ box: boxNumero, user: 'API' });
-        
-        res.json({ 
-            success: true, 
-            action: actionEffectuee,
-            message: `Action traitée pour le box ${boxNumero} : ${actionEffectuee}` 
-        });
-    } catch (err) {
-        console.error('[RELAIS] Erreur :', err.message);
-        res.status(500).json({ success: false, error: "Erreur lors de la communication avec la carte relais" });
-    }
-});
-
-// GET etat d'un relais
-router.get('/status', async (req, res) => {
-    const r = parseInt(req.query.relais) || 1;
-    try {
-        const reponse = await envoyerCommandeIPLAB(`GR${r}`);
-        res.json({
-            success: true,
-            [`relais${r}`]: reponse === '1' ? 'ACTIF' : 'INACTIF',
-            raw: reponse
-        });
-    } catch (err) {
-        res.status(503).json({ success: false, error: err.message });
-    }
-});
-
-module.exports = router;
-module.exports.ouvrirRelais1        = ouvrirRelais1;
-module.exports.envoyerRefus         = envoyerRefus;
-module.exports.envoyerCommandeIPLAB = envoyerCommandeIPLAB;
+module.exports                          = routeurRelais.router;
+module.exports.ouvrirRelais1            = (data) => gestionnaire.ouvrirRelais(data?.box);
+module.exports.envoyerRefus             = (data) => gestionnaire.envoyerRefus(data?.box);
+module.exports.envoyerCommandeIPLAB     = (cmd)  => clientIPLAB.envoyerCommande(cmd);

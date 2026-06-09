@@ -10,7 +10,7 @@ self.addEventListener('push', function(event) {
         const data = event.data.json();
         const options = {
             body: data.body,
-            icon: '/img/logo.png', // Vérifie que ce chemin existe ou enlève la ligne
+            icon: '/img/logo.png', 
             badge: '/img/badge.png',
             vibrate: [100, 50, 100],
             data: {

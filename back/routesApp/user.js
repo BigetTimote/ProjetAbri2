@@ -12,7 +12,7 @@ const db = mysql.createPool({
 router.get('/', async (req, res) => {
     const appSecret = req.headers['x-app-secret'];
     
-    // 1. Vérification de la trame de sécurité
+    //  Vérification de la trame de sécurité
     if (!appSecret || appSecret !== process.env.APP_TRAME_SECRET4) {
         return res.status(403).json({ error: "Trame invalide : Accès refusé" });
     }

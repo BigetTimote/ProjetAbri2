@@ -1,4 +1,4 @@
-
+/** 
 const express = require('express');
 const router = express.Router();
 const http = require('http');
@@ -9,9 +9,9 @@ const ARDUINO_CONFIG = {
     timeout: 5000
 };
 
-/**
- * @param {Object} accessData - Données de l'accès RFID
- */
+
+@param {Object} accessData - Données de l'accès RFID
+
 function notifyArduino(accessData) {
     const payload = JSON.stringify(accessData);
     
@@ -110,3 +110,5 @@ router.get('/status', async (req, res) => {
 
 module.exports = router;
 module.exports.notifyArduino = notifyArduino;
+
+*/

@@ -17,6 +17,7 @@ const db = mysql.createPool({
     database: process.env.DB_NAME
 });
 
+
 app.use(express.json());
 
 // CORS Headers
@@ -38,7 +39,7 @@ app.use('/api/solde', require('./routes/solde'));
 app.use('/logout', require('./routes/logout'));
 app.use('/api/users', require('./routes/users'));
 app.use('/log', require('./routesRFID/verification'));
-app.use('/ard', require('./routesRFID/arduino'));
+// app.use('/ard', require('./routesRFID/arduino'));
 app.use('/relais', require('./routesRFID/relais'));
 app.use('/api/modify', require('./routesApp/modify'));
 app.use('/api/delete', require('./routesApp/delete'));

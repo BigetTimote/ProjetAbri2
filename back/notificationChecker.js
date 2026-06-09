@@ -20,15 +20,17 @@ webpush.setVapidDetails(
 module.exports = (wss) => {
     console.log("--- JOB NOTIFICATION MINUTE : ACTIF ---");
     
-    // S'exécute toutes les minutes
     cron.schedule('* * * * *', () => {
         // On cherche les sessions où date_fin est NULL (session en cours)
+        // ET où la notification n'a pas encore été envoyée (notification_sent = 0)
         const sql = `
-            SELECT ups.user_id, ups.subscription_data, 
+            SELECT cs.id_session, ups.user_id, ups.subscription_data, 
             TIMESTAMPDIFF(MINUTE, cs.date_debut, NOW()) as mins_ecoulees
             FROM Consommation_Session cs
             JOIN user_push_subscriptions ups ON cs.id_utilisateur = ups.user_id
-            WHERE cs.date_fin IS NULL
+            WHERE cs.date_fin IS NULL 
+            AND TIMESTAMPDIFF(MINUTE, cs.date_debut, NOW()) >= 1
+            AND (cs.notification_sent = 0 OR cs.notification_sent IS NULL)
         `;
         
         db.query(sql, (err, results) => {
@@ -42,20 +44,28 @@ module.exports = (wss) => {
                     try {
                         const subscription = JSON.parse(row.subscription_data);
                         const payload = JSON.stringify({
-                            title: "Session en cours ⏱️",
-                            body: `Vous êtes connecté depuis ${row.mins_ecoulees} minute(s).`,
+                            title: "Vehicule Charge !",
+                            body: `Votre vehicule est chargé depuis ${row.mins_ecoulees} minute(s).`,
                             icon: "/logo192.png",
                             badge: "/logo-badge.png",
-                            // Le "tag" permet de remplacer la notif précédente au lieu d'en créer une nouvelle
-                            tag: "session-status", 
-                            // "renotify: false" permet de mettre à jour le texte sans faire vibrer le tel à chaque fois
-                            renotify: false,
-                            silent: true 
+                            tag: "session-notification",
+                            renotify: true,
+                            requireInteraction: false
                         });
                         
                         webpush.sendNotification(subscription, payload)
                             .then(() => {
-                                console.log(`📬 Update envoyée à user ${row.user_id} (${row.mins_ecoulees} min)`);
+                                console.log(`Notification envoyée à user ${row.user_id} après ${row.mins_ecoulees} min`);
+                                // Marquer la session comme ayant reçu la notification
+                                db.query(
+                                    'UPDATE Consommation_Session SET notification_sent = 1 WHERE id_session = ?',
+                                    [row.id_session],
+                                    (updateErr) => {
+                                        if (updateErr) {
+                                            console.error(`Erreur mise à jour notification_sent:`, updateErr.message);
+                                        }
+                                    }
+                                );
                             })
                             .catch(err => {
                                 console.error(`Erreur push user ${row.user_id}:`, err.message);
